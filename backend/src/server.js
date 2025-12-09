@@ -8,6 +8,8 @@ import db, { testConnection } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import measurementsRoutes from './routes/measurements.routes.js';
 import sessionRoutes from './routes/session.routes.js';
+import topicRoutes from './routes/topic.routes.js';
+import quizRoutes from './routes/quiz.routes.js';
 
 // Create Express app
 const app = express();
@@ -43,6 +45,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/measurements', measurementsRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/topics', topicRoutes);
+app.use('/api/quizzes', quizRoutes);
 
 // 404 handler
 app.use((req, res) => {
