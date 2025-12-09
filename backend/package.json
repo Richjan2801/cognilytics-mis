@@ -1,24 +1,35 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "db:connect": "docker-compose exec database psql -U postgres -d cognilytics_mis",
+    "db:users": "docker-compose exec database psql -U postgres -d cognilytics_mis -c 'SELECT user_id, email, first_name, last_name, role, is_active, created_at FROM users ORDER BY created_at;'",
+    "db:tables": "docker-compose exec database psql -U postgres -d cognilytics_mis -c '\\dt'"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "CogniLytics MIS Backend - Cognitive Load Measurement System",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^9.0.0"
+    "node-cron": "^3.0.3",
+    "pg": "^8.11.3",
+    "pg-promise": "^11.5.4"
   },
   "devDependencies": {
+    "jest": "^29.7.0",
     "nodemon": "^3.1.11"
   }
 }
