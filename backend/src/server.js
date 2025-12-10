@@ -10,6 +10,9 @@ import measurementsRoutes from './routes/measurements.routes.js';
 import sessionRoutes from './routes/session.routes.js';
 import topicRoutes from './routes/topic.routes.js';
 import quizRoutes from './routes/quiz.routes.js';
+import teacherRoutes from './routes/teacher.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import reportRoutes from './routes/report.routes.js';
 
 // Create Express app
 const app = express();
@@ -47,6 +50,9 @@ app.use('/api/measurements', measurementsRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/topics', topicRoutes);
 app.use('/api/quizzes', quizRoutes);
+app.use('/api/teacher', teacherRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404 handler
 app.use((req, res) => {

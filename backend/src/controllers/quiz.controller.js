@@ -382,6 +382,36 @@ export async function updateQuestion(req, res) {
 
         const { questionId } = req.params;
 
+        // Get the question to find its quiz_id
+        const existingQuestion = await db.oneOrNone(
+            'SELECT quiz_id FROM quiz_questions WHERE question_id = $1',
+            [questionId]
+        );
+
+        if (!existingQuestion) {
+            return res.status(404).json({
+                success: false,
+                message: 'Question not found',
+            });
+        }
+
+        // Verify quiz ownership
+        const quiz = await quizModel.getQuizById(existingQuestion.quiz_id);
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz not found',
+            });
+        }
+
+        // Only quiz creator or admins can update questions
+        if (quiz.created_by !== req.user.user_id && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to update this question',
+            });
+        }
+
         const {
             question_text,
             question_type,
@@ -426,6 +456,36 @@ export async function updateQuestion(req, res) {
 export async function deleteQuestion(req, res) {
     try {
         const { questionId } = req.params;
+
+        // Get the question to find its quiz_id
+        const existingQuestion = await db.oneOrNone(
+            'SELECT quiz_id FROM quiz_questions WHERE question_id = $1',
+            [questionId]
+        );
+
+        if (!existingQuestion) {
+            return res.status(404).json({
+                success: false,
+                message: 'Question not found',
+            });
+        }
+
+        // Verify quiz ownership
+        const quiz = await quizModel.getQuizById(existingQuestion.quiz_id);
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: 'Quiz not found',
+            });
+        }
+
+        // Only quiz creator or admins can delete questions
+        if (quiz.created_by !== req.user.user_id && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'You do not have permission to delete this question',
+            });
+        }
 
         await quizModel.deleteQuizQuestion(questionId);
 
@@ -518,7 +578,7 @@ export async function submitQuizAttempt(req, res) {
             });
         }
 
-        if (attempt.completed_at) {
+        if (attempt.submitted_at) {
             return res.status(400).json({
                 success: false,
                 message: 'Quiz attempt has already been submitted',
@@ -542,7 +602,7 @@ export async function submitQuizAttempt(req, res) {
             }
         });
 
-        const passed = (score / maxScore) * 100 >= quiz.passing_score;
+        const passed = maxScore > 0 ? (score / maxScore) * 100 >= quiz.passing_score : false;
 
         // Submit attempt
         const submittedAttempt = await quizModel.submitQuizAttempt(attemptId, {
