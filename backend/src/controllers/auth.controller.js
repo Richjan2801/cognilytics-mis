@@ -3,6 +3,8 @@ import { validationResult } from 'express-validator';
 import * as userModel from '../models/users.model.js';
 import { generateTokens, verifyRefreshToken } from '../auth/jwt.js';
 import { handleDatabaseError } from '../config/db.js';
+import config from '../config/env.js';
+import { findUserByEmail, mockUsers } from '../data/mockData.js';
 
 /**
  * Register a new user
@@ -76,9 +78,12 @@ export async function register(req, res) {
  */
 export async function login(req, res) {
     try {
+        console.log('[AUTH] Login request received:', req.body?.email);
+        
         // Validate request
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('[AUTH] Validation errors:', errors.array());
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
@@ -87,15 +92,36 @@ export async function login(req, res) {
         }
 
         const { email, password } = req.body;
+        console.log('[AUTH] Processing login for:', email, 'Mock mode:', config.USE_MOCK_DATA);
 
-        // Verify credentials
-        const user = await userModel.verifyUserPassword(email, password);
+        let user;
 
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password',
-            });
+        // MOCK MODE
+        if (config.USE_MOCK_DATA) {
+            console.log('[MOCK MODE] Login attempt for:', email);
+            user = findUserByEmail(email);
+
+            if (!user) {
+                console.log('[MOCK MODE] User not found');
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password',
+                });
+            }
+
+            // In mock mode, accept any password for demo
+            console.log('[MOCK MODE] Login successful for:', email);
+        } else {
+            // REAL DATABASE MODE
+            // Verify credentials
+            user = await userModel.verifyUserPassword(email, password);
+
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password',
+                });
+            }
         }
 
         if (!user.is_active) {
@@ -108,27 +134,25 @@ export async function login(req, res) {
         // Generate tokens
         const tokens = generateTokens(user);
 
+        // Remove password_hash from response
+        const { password_hash, ...userWithoutPassword } = user;
+
         res.status(200).json({
             success: true,
             message: 'Login successful',
             data: {
-                user: {
-                    user_id: user.user_id,
-                    email: user.email,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    role: user.role,
-                    institution_id: user.institution_id,
-                },
+                user: userWithoutPassword,
                 ...tokens,
             },
         });
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('[AUTH] Login error:', error);
+        console.error('[AUTH] Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Login failed',
             error: error.message,
+            ...(config.NODE_ENV === 'development' && { stack: error.stack }),
         });
     }
 }

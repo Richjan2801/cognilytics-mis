@@ -76,6 +76,9 @@ const config = {
         TEACHER_HIGH_ACCURACY_THRESHOLD: parseFloat(process.env.TEACHER_HIGH_ACCURACY_THRESHOLD || '0.85'),
     },
 
+    // Mock Data Mode (for development without database)
+    USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true' || false,
+
     // Logging
     LOG_LEVEL: process.env.LOG_LEVEL || 'info',
     LOG_FILE: process.env.LOG_FILE || 'logs/app.log',

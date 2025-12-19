@@ -1,0 +1,20 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- White circle background for dark mode -->
+  <circle cx="100" cy="100" r="95" fill="white" stroke="#E5E7EB" stroke-width="3"/>
+  
+  <!-- Graduate cap (mortarboard) -->
+  <polygon points="100,45 130,55 130,50 100,40 70,50 70,55" fill="#1E3A8A"/>
+  
+  <!-- Head -->
+  <circle cx="100" cy="85" r="20" fill="#1E3A8A"/>
+  
+  <!-- Shoulders/Body -->
+  <path d="M 75 105 Q 75 95 85 90 L 85 135 Q 100 145 115 135 L 115 90 Q 125 95 125 105" fill="#1E3A8A"/>
+  
+  <!-- Stars decoration -->
+  <circle cx="60" cy="70" r="3" fill="#3B82F6"/>
+  <circle cx="140" cy="70" r="3" fill="#3B82F6"/>
+  <circle cx="75" cy="130" r="2.5" fill="#3B82F6"/>
+  <circle cx="125" cy="130" r="2.5" fill="#3B82F6"/>
+  <circle cx="100" cy="145" r="2" fill="#3B82F6"/>
+</svg>

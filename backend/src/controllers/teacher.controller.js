@@ -1,6 +1,12 @@
 // Teacher controller - handles teacher dashboard and analytics
 import { validationResult } from 'express-validator';
 import db, { handleDatabaseError } from '../config/db.js';
+import config from '../config/env.js';
+import {
+  getTeacherDashboardData,
+  getTopicsByTeacher,
+  getMeasurementsByTopic,
+} from '../data/mockData.js';
 
 /**
  * Get teacher dashboard overview
@@ -18,6 +24,22 @@ export async function getDashboard(req, res) {
 
         const teacherId = req.user.user_id;
 
+        // MOCK MODE: Return mock data if enabled
+        if (config.USE_MOCK_DATA) {
+            console.log('[MOCK MODE] Returning mock teacher dashboard data');
+            const mockData = getTeacherDashboardData(teacherId);
+            return res.json({
+                success: true,
+                data: {
+                    overview: mockData.overview,
+                    cl_trend: mockData.cl_trend_7days,
+                    recent_submissions: mockData.recent_submissions,
+                    topic_breakdown: mockData.topic_breakdown,
+                },
+            });
+        }
+
+        // REAL DATABASE MODE: Original implementation
         // Get total students (unique users who have taken quizzes/sessions on teacher's topics)
         const studentStats = await db.oneOrNone(
             `SELECT COUNT(DISTINCT s.user_id) as total_students

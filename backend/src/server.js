@@ -79,10 +79,15 @@ async function startServer() {
     try {
         console.log('Starting CogniLytics MIS Backend...\n');
 
-        // Test database connection
-        console.log('Testing database connection...');
-        await testConnection();
-        console.log('✓ Database connected successfully\n');
+        // Test database connection (skip in mock mode)
+        if (config.USE_MOCK_DATA) {
+            console.log('⚠️  MOCK DATA MODE ENABLED');
+            console.log('Database connection skipped - using mock data\n');
+        } else {
+            console.log('Testing database connection...');
+            await testConnection();
+            console.log('✓ Database connected successfully\n');
+        }
 
         // Start listening
         const PORT = config.PORT;
@@ -94,6 +99,7 @@ async function startServer() {
             console.log('='.repeat(50));
             console.log(`URL:         http://${HOST}:${PORT}`);
             console.log(`Environment: ${config.NODE_ENV}`);
+            console.log(`Mock Mode:   ${config.USE_MOCK_DATA ? 'ENABLED ⚠️' : 'Disabled'}`);
             console.log(`Health:      http://${HOST}:${PORT}/health`);
             console.log('='.repeat(50));
             console.log('\nPress Ctrl+C to stop the server\n');
@@ -103,7 +109,8 @@ async function startServer() {
         console.error('\nPossible issues:');
         console.error('1. Database is not running (docker-compose up database -d)');
         console.error('2. Database credentials are incorrect (.env file)');
-        console.error('3. Port 3000 is already in use\n');
+        console.error('3. Port 3000 is already in use');
+        console.error('4. If using mock mode, set USE_MOCK_DATA=true in .env\n');
         process.exit(1);
     }
 }
@@ -112,8 +119,10 @@ async function startServer() {
 process.on('SIGINT', async () => {
     console.log('\n\nShutting down gracefully...');
     try {
-        await db.$pool.end();
-        console.log('✓ Database connections closed');
+        if (!config.USE_MOCK_DATA) {
+            await db.$pool.end();
+            console.log('✓ Database connections closed');
+        }
         process.exit(0);
     } catch (error) {
         console.error('Error during shutdown:', error);
@@ -124,8 +133,10 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
     console.log('\n\nShutting down gracefully...');
     try {
-        await db.$pool.end();
-        console.log('✓ Database connections closed');
+        if (!config.USE_MOCK_DATA) {
+            await db.$pool.end();
+            console.log('✓ Database connections closed');
+        }
         process.exit(0);
     } catch (error) {
         console.error('Error during shutdown:', error);
