@@ -130,7 +130,7 @@ const LoginPage = () => {
               label="Email"
               type="email"
               name="email"
-              placeholder="admin@cognilytics.com"
+              placeholder="Enter your email"
               value={formData.email}
               onChange={handleChange}
               error={errors.email}
