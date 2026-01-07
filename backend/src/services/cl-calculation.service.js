@@ -22,6 +22,11 @@ function clamp(value, min, max) {
  * @returns {number} Normalized SR value (0-1)
  */
 export function normalizeSR(srData) {
+    // Handle null or undefined input
+    if (!srData) {
+        return null;
+    }
+
     const { paas_score, nasa_tlx_mental_demand, nasa_tlx_effort, nasa_tlx_frustration } = srData;
 
     // Prefer PAAS if available

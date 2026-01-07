@@ -91,7 +91,7 @@ export async function getDashboard(req, res) {
                 COUNT(DISTINCT q.quiz_id) as total_quizzes,
                 COUNT(qa.attempt_id) as total_attempts,
                 AVG(qa.score) as avg_score,
-                COUNT(CASE WHEN (qa.score / q.max_score * 100) >= q.passing_score THEN 1 END)::float /
+                COUNT(CASE WHEN (qa.score / qa.max_score * 100) >= q.passing_score THEN 1 END)::float /
                     NULLIF(COUNT(qa.attempt_id), 0) * 100 as pass_rate
              FROM quizzes q
              LEFT JOIN quiz_attempts qa ON q.quiz_id = qa.quiz_id

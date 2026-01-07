@@ -9,9 +9,15 @@ import { handleDatabaseError } from '../config/db.js';
  */
 export async function createSession(req, res) {
     try {
+        console.log('SESSION CREATE: Received request:', {
+            user: req.user?.user_id,
+            body: req.body
+        });
+
         // Validate request
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('SESSION CREATE: Validation errors:', errors.array());
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
@@ -27,10 +33,18 @@ export async function createSession(req, res) {
             metadata = {},
         } = req.body;
 
+        console.log('SESSION CREATE: Extracted data:', {
+            topic_id,
+            quiz_id,
+            session_type,
+            device_type
+        });
+
         // Get IP address and user agent from request
         const ip_address = req.ip || req.connection.remoteAddress;
         const user_agent = req.get('user-agent') || null;
 
+        console.log('SESSION CREATE: Calling model.createSession');
         const session = await sessionModel.createSession({
             user_id: req.user.user_id,
             topic_id,
@@ -42,12 +56,15 @@ export async function createSession(req, res) {
             metadata,
         });
 
+        console.log('SESSION CREATE: Session created successfully:', session);
+
         res.status(201).json({
             success: true,
             message: 'Session created successfully',
             data: { session },
         });
     } catch (error) {
+        console.error('SESSION CREATE: Error:', error);
         console.error('Create session error:', error);
         const dbError = handleDatabaseError(error);
         res.status(dbError.status).json({

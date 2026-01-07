@@ -1,5 +1,5 @@
 // User model - handles user-related database operations
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import config from '../config/env.js';
 

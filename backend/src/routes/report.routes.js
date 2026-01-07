@@ -1,81 +1,95 @@
-// Report routes - report generation and analytics
+// Reports routes - CL analytics and insights endpoints
 import express from 'express';
 import { body, param, query } from 'express-validator';
-import * as reportController from '../controllers/report.controller.js';
+import {
+    getTeacherDashboard,
+    getAdminDashboard,
+    getCLTrends,
+    getStudentPerformanceInsights,
+    getTopicDifficultyAnalysis,
+    getCLDistributionReport,
+    getComparativeAnalytics
+} from '../controllers/report.controller.js';
 import { authenticate } from '../auth/roleGuard.js';
 
 const router = express.Router();
 
-/**
- * Validation for UUID parameters
- */
-const uuidParamValidation = (paramName) => [
-    param(paramName)
-        .isUUID()
-        .withMessage(`${paramName} must be a valid UUID`),
-];
-
-/**
- * Validation for query parameters
- */
-const queryValidation = [
-    query('days')
-        .optional()
-        .isInt({ min: 1, max: 365 })
-        .withMessage('Days must be between 1 and 365'),
-];
-
-/**
- * Validation for export request
- */
-const exportValidation = [
-    body('report_type')
-        .notEmpty()
-        .withMessage('Report type is required')
-        .isIn(['student', 'topic', 'class'])
-        .withMessage('Report type must be student, topic, or class'),
-
-    body('entity_id')
-        .notEmpty()
-        .withMessage('Entity ID is required')
-        .isUUID()
-        .withMessage('Entity ID must be a valid UUID'),
-
-    body('format')
-        .optional()
-        .isIn(['json', 'csv', 'pdf'])
-        .withMessage('Format must be json, csv, or pdf'),
-];
-
-// All report routes require authentication
+// Apply authentication to all routes
 router.use(authenticate);
 
-// Get student CL report
-router.get(
-    '/student/:id',
-    [...uuidParamValidation('id'), ...queryValidation],
-    reportController.getStudentReport
+// Teacher dashboard overview
+router.get('/teacher/dashboard',
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getTeacherDashboard
 );
 
-// Get topic CL report
-router.get(
-    '/topic/:id',
-    [...uuidParamValidation('id'), ...queryValidation],
-    reportController.getTopicReport
+// Admin dashboard overview (admin only)
+router.get('/admin/dashboard',
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getAdminDashboard
 );
 
-// Get class CL report (teacher's class)
-router.get(
-    '/class/:id',
-    [...uuidParamValidation('id'), ...queryValidation],
-    reportController.getClassReport
+// CL trends over time
+router.get('/trends/:entityType',
+    param('entityType').isIn(['user', 'topic', 'system']).withMessage('Invalid entity type'),
+    query('period').optional().isIn(['daily', 'weekly', 'monthly']).withMessage('Invalid period'),
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getCLTrends
 );
 
-// Export report (placeholder)
-router.post(
-    '/export',
-    exportValidation,
-    reportController.exportReport
+router.get('/trends/:entityType/:entityId',
+    param('entityType').isIn(['user', 'topic', 'system']).withMessage('Invalid entity type'),
+    param('entityId').isUUID().withMessage('Invalid entity ID'),
+    query('period').optional().isIn(['daily', 'weekly', 'monthly']).withMessage('Invalid period'),
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getCLTrends
+);
+
+// Student performance insights
+router.get('/students/performance',
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+    getStudentPerformanceInsights
+);
+
+// Topic difficulty analysis
+router.get('/topics/difficulty',
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    query('subject').optional().isString().withMessage('Invalid subject'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+    getTopicDifficultyAnalysis
+);
+
+// CL distribution report
+router.get('/distribution/:entityType',
+    param('entityType').isIn(['user', 'topic', 'system']).withMessage('Invalid entity type'),
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getCLDistributionReport
+);
+
+router.get('/distribution/:entityType/:entityId',
+    param('entityType').isIn(['user', 'topic', 'system']).withMessage('Invalid entity type'),
+    param('entityId').isUUID().withMessage('Invalid entity ID'),
+    query('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    query('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getCLDistributionReport
+);
+
+// Comparative analytics
+router.post('/compare',
+    body('group_ids').isArray({ min: 1, max: 10 }).withMessage('group_ids must be array with 1-10 items'),
+    body('group_ids.*').isUUID().withMessage('Each group_id must be a valid UUID'),
+    body('group_type').isIn(['topic', 'user']).withMessage('group_type must be topic or user'),
+    body('start_date').optional().isISO8601().withMessage('Invalid start_date format'),
+    body('end_date').optional().isISO8601().withMessage('Invalid end_date format'),
+    getComparativeAnalytics
 );
 
 export default router;

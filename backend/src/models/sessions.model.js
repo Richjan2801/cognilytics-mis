@@ -22,7 +22,7 @@ export async function createSession(sessionData) {
         `INSERT INTO learning_sessions
          (user_id, topic_id, quiz_id, session_type, started_at, device_type, ip_address, user_agent, metadata)
          VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8)
-         RETURNING session_id, user_id, topic_id, quiz_id, session_type, started_at, device_type, metadata`,
+         RETURNING session_id, user_id, topic_id, quiz_id, session_type, status, started_at, device_type, metadata`,
         [user_id, topic_id, quiz_id, session_type, device_type, ip_address, user_agent, metadata]
     );
 
@@ -38,9 +38,10 @@ export async function endSession(sessionId) {
     const session = await db.one(
         `UPDATE learning_sessions
          SET ended_at = NOW(),
-             duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
+             duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER,
+             status = 'completed'
          WHERE session_id = $1
-         RETURNING session_id, user_id, topic_id, quiz_id, session_type,
+         RETURNING session_id, user_id, topic_id, quiz_id, session_type, status,
                    started_at, ended_at, duration_seconds`,
         [sessionId]
     );
@@ -55,7 +56,7 @@ export async function endSession(sessionId) {
  */
 export async function getSessionById(sessionId) {
     return await db.oneOrNone(
-        `SELECT session_id, user_id, topic_id, quiz_id, session_type,
+        `SELECT session_id, user_id, topic_id, quiz_id, session_type, status,
                 started_at, ended_at, duration_seconds, device_type,
                 ip_address, user_agent, metadata
          FROM learning_sessions

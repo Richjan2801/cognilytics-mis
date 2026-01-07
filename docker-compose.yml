@@ -7,9 +7,19 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - JWT_SECRET=pass
+      - DB_URI=postgres://postgres:postgres@database:5432/cognilytics_mis
+      - USE_MOCK_DATA=false
+      - DB_HOST=database
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=cognilytics_mis
+      - DB_PORT=5432
     volumes:
       - ./backend:/app
       - /app/node_modules
+    depends_on:
+      - database
 
   frontend:
     build: ./frontend

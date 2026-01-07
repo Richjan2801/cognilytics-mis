@@ -2,7 +2,7 @@
 import { validationResult } from 'express-validator';
 import * as quizModel from '../models/quizzes.model.js';
 import * as topicModel from '../models/topics.model.js';
-import { handleDatabaseError } from '../config/db.js';
+import db, { handleDatabaseError } from '../config/db.js';
 
 /**
  * Create a new quiz
@@ -578,7 +578,7 @@ export async function submitQuizAttempt(req, res) {
             });
         }
 
-        if (attempt.submitted_at) {
+        if (attempt.completed_at) {
             return res.status(400).json({
                 success: false,
                 message: 'Quiz attempt has already been submitted',

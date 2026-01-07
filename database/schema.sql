@@ -148,6 +148,7 @@ CREATE TABLE learning_sessions (
     topic_id UUID REFERENCES topics(topic_id) ON DELETE SET NULL,
     quiz_id UUID REFERENCES quizzes(quiz_id) ON DELETE SET NULL,
     session_type VARCHAR(50) NOT NULL CHECK (session_type IN ('quiz', 'study', 'practice', 'review')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'abandoned')),
     started_at TIMESTAMPTZ NOT NULL,
     ended_at TIMESTAMPTZ,
     duration_seconds INTEGER,
@@ -173,6 +174,7 @@ CREATE TABLE cl_measurements (
     session_id UUID NOT NULL,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     topic_id UUID REFERENCES topics(topic_id) ON DELETE SET NULL,
+    quiz_id UUID REFERENCES quizzes(quiz_id) ON DELETE SET NULL,
     measured_at TIMESTAMPTZ NOT NULL,
 
     -- Self-Report Component (SR)
@@ -225,6 +227,7 @@ SELECT create_hypertable('cl_measurements', 'measured_at', if_not_exists => TRUE
 CREATE INDEX idx_cl_user_time ON cl_measurements(user_id, measured_at DESC);
 CREATE INDEX idx_cl_session ON cl_measurements(session_id);
 CREATE INDEX idx_cl_topic ON cl_measurements(topic_id, measured_at DESC);
+CREATE INDEX idx_cl_quiz ON cl_measurements(quiz_id, measured_at DESC);
 CREATE INDEX idx_cl_category ON cl_measurements(cl_category, measured_at DESC);
 CREATE INDEX idx_cl_index ON cl_measurements(cl_index, measured_at DESC);
 

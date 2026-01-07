@@ -6,8 +6,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from .env file
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Load environment variables from .env file (skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+    dotenv.config({ path: path.join(__dirname, '../../.env') });
+}
 
 const config = {
     // Server Configuration
@@ -15,10 +17,10 @@ const config = {
     PORT: parseInt(process.env.PORT || '3000', 10),
     HOST: process.env.HOST || 'localhost',
 
-    // Database Configuration
-    DB_HOST: process.env.DB_HOST || 'localhost',
-    DB_PORT: parseInt(process.env.DB_PORT || '5432', 10),
-    DB_NAME: process.env.DB_NAME || 'cognilytics_mis',
+    // Database Configuration - Use test defaults when in test environment
+    DB_HOST: process.env.DB_HOST || (process.env.NODE_ENV === 'test' ? 'localhost' : 'postgres'),
+    DB_PORT: parseInt(process.env.DB_PORT || (process.env.NODE_ENV === 'test' ? '5433' : '5432'), 10),
+    DB_NAME: process.env.DB_NAME || (process.env.NODE_ENV === 'test' ? (process.env.TEST_DB_NAME || 'cognilytics_mis_test') : 'cognilytics_mis'),
     DB_USER: process.env.DB_USER || 'postgres',
     DB_PASSWORD: process.env.DB_PASSWORD || 'postgres',
     DB_SSL: process.env.DB_SSL === 'true',

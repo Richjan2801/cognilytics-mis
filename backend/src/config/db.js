@@ -28,27 +28,67 @@ const pgp = pgPromise({
     },
 });
 
-// Database connection configuration
-const dbConfig = {
-    host: config.DB_HOST,
-    port: config.DB_PORT,
-    database: config.DB_NAME,
-    user: config.DB_USER,
-    password: config.DB_PASSWORD,
-    max: config.DB_MAX_CONNECTIONS,
-    idleTimeoutMillis: config.DB_IDLE_TIMEOUT,
-    connectionTimeoutMillis: 5000, // 5 seconds
+// Create database instance function for dynamic configuration
+const createDatabaseConnection = () => {
+    // Re-evaluate config for current environment (important for tests)
+    const currentConfig = {
+        NODE_ENV: process.env.NODE_ENV || 'development',
+        DB_HOST: process.env.DB_HOST || (process.env.NODE_ENV === 'test' ? 'localhost' : 'postgres'),
+        DB_PORT: parseInt(process.env.DB_PORT || (process.env.NODE_ENV === 'test' ? '5433' : '5432'), 10),
+        DB_NAME: process.env.DB_NAME || (process.env.NODE_ENV === 'test' ? (process.env.TEST_DB_NAME || 'cognilytics_mis_test') : 'cognilytics_mis'),
+        DB_USER: process.env.DB_USER || 'postgres',
+        DB_PASSWORD: process.env.DB_PASSWORD || 'postgres',
+        DB_MAX_CONNECTIONS: parseInt(process.env.DB_MAX_CONNECTIONS || '20', 10),
+        DB_IDLE_TIMEOUT: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
+        DB_SSL: process.env.DB_SSL === 'true',
+        LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+    };
+
+    const dbConfig = {
+        host: currentConfig.DB_HOST,
+        port: currentConfig.DB_PORT,
+        database: currentConfig.DB_NAME,
+        user: currentConfig.DB_USER,
+        password: currentConfig.DB_PASSWORD,
+        max: currentConfig.DB_MAX_CONNECTIONS,
+        idleTimeoutMillis: currentConfig.DB_IDLE_TIMEOUT,
+        connectionTimeoutMillis: 5000, // 5 seconds
+    };
+
+    // Add SSL configuration if enabled
+    if (currentConfig.DB_SSL) {
+        dbConfig.ssl = {
+            rejectUnauthorized: false, // For development; set to true in production with proper certificates
+        };
+    }
+
+    return pgp(dbConfig);
 };
 
-// Add SSL configuration if enabled
-if (config.DB_SSL) {
-    dbConfig.ssl = {
-        rejectUnauthorized: false, // For development; set to true in production with proper certificates
-    };
+// Create database instance
+let db = createDatabaseConnection();
+let lastTestDbName = process.env.TEST_DB_NAME;
+
+// Function to get current database connection (recreates if needed for tests)
+export function getDatabaseConnection() {
+    // Check if TEST_DB_NAME has changed (for testing)
+    if (process.env.NODE_ENV === 'test' && process.env.TEST_DB_NAME !== lastTestDbName) {
+        console.log(`🔄 Recreating database connection for test database: ${process.env.TEST_DB_NAME}`);
+        // Don't close the old connection immediately to avoid destroying pools in use
+        // Just create a new one and update the reference
+        db = createDatabaseConnection();
+        lastTestDbName = process.env.TEST_DB_NAME;
+    }
+    return db;
 }
 
-// Create database instance
-const db = pgp(dbConfig);
+// For backward compatibility, export default as a getter that returns current connection
+export default new Proxy({}, {
+    get(target, prop) {
+        const currentDb = getDatabaseConnection();
+        return currentDb[prop];
+    }
+});
 
 /**
  * Test database connection
@@ -185,5 +225,4 @@ export function handleDatabaseError(error) {
 }
 
 // Export database instance and helpers
-export { db, pgp };
-export default db;
+export { pgp };

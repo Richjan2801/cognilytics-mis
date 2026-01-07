@@ -32,8 +32,9 @@ const createTopicValidation = [
 
     body('grade_level')
         .optional()
-        .isInt({ min: 1, max: 20 })
-        .withMessage('Grade level must be between 1 and 20'),
+        .isString()
+        .isLength({ max: 50 })
+        .withMessage('Grade level must not exceed 50 characters'),
 
     body('difficulty_level')
         .optional()
@@ -90,8 +91,9 @@ const updateTopicValidation = [
 
     body('grade_level')
         .optional()
-        .isInt({ min: 1, max: 20 })
-        .withMessage('Grade level must be between 1 and 20'),
+        .isString()
+        .isLength({ max: 50 })
+        .withMessage('Grade level must not exceed 50 characters'),
 
     body('difficulty_level')
         .optional()
@@ -146,8 +148,9 @@ const topicQueryValidation = [
 
     query('grade_level')
         .optional()
-        .isInt({ min: 1, max: 20 })
-        .withMessage('Grade level must be between 1 and 20'),
+        .isString()
+        .isLength({ max: 50 })
+        .withMessage('Grade level must not exceed 50 characters'),
 
     query('is_active')
         .optional()

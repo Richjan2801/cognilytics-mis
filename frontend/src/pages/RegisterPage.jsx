@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Mail, Lock, User, Shield, AlertCircle, CheckCircle } from 'lucide-react';
 import showToast from '../utils/toast';
+// PERUBAHAN 1: Import authService (pastikan path folder '../services/' sesuai dengan struktur foldermu)
+import authService from '../services/authService'; 
 
 function RegisterPage() {
   const navigate = useNavigate();
@@ -85,29 +87,46 @@ function RegisterPage() {
     }
 
     setIsSubmitting(true);
+    setErrors({}); // Bersihkan error sebelumnya
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 1. Memecah nama menjadi first_name dan last_name
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Mock successful registration
-      console.log('Registration data:', {
-        name: formData.name,
+      // 2. Siapkan data untuk dikirim ke API
+      const registrationData = {
         email: formData.email,
-        role: formData.role
-      });
+        password: formData.password,
+        
+        // --- BAGIAN INI YANG WAJIB ADA .toLowerCase() ---
+        // Mengubah "Student" menjadi "student" agar diterima backend
+        role: formData.role.toLowerCase(), 
+        // ------------------------------------------------
+        
+        first_name: firstName,
+        last_name: lastName
+      };
 
+      // 3. Panggil API Register yang Asli
+      await authService.register(registrationData);
+
+      // Jika sukses:
       showToast.success('Account created successfully!');
       setShowSuccess(true);
 
-      // Redirect to login after 2 seconds
+      // Redirect ke login setelah 2 detik
       setTimeout(() => {
         navigate('/login');
       }, 2000);
 
     } catch (error) {
-      showToast.error('Registration failed. Please try again.');
-      setErrors({ submit: 'Registration failed. Please try again.' });
+      console.error("Register Error:", error);
+      // Menampilkan pesan error dari backend jika ada
+      const errorMessage = error.message || 'Registration failed. Please try again.';
+      showToast.error(errorMessage);
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +179,6 @@ function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserPlus className="w-8 h-8 text-white" />
@@ -169,7 +187,6 @@ function RegisterPage() {
           <p className="text-gray-600">Join CogniLytics MIS today</p>
         </div>
 
-        {/* Registration Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Name Field */}
           <div>

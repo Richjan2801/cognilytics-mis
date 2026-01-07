@@ -93,7 +93,7 @@ export async function getMeasurementById(measurementId) {
  */
 export async function getMeasurementsBySession(sessionId) {
     return await db.any(
-        `SELECT measurement_id, user_id, topic_id, measured_at,
+        `SELECT measurement_id, session_id, user_id, topic_id, measured_at,
                 sr_normalized, pf_normalized, bh_normalized, ph_normalized,
                 cl_index, cl_category
          FROM cl_measurements

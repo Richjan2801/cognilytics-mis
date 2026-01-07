@@ -11,9 +11,15 @@ import { handleDatabaseError } from '../config/db.js';
  */
 export async function createMeasurement(req, res) {
     try {
+        console.log('MEASUREMENT CREATE: Received request:', {
+            user: req.user?.user_id,
+            body: req.body
+        });
+
         // Validate request
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.log('MEASUREMENT CREATE: Validation errors:', errors.array());
             return res.status(400).json({
                 success: false,
                 message: 'Validation failed',
@@ -44,9 +50,17 @@ export async function createMeasurement(req, res) {
             ph_heart_rate_data = null,
         } = req.body;
 
+        console.log('MEASUREMENT CREATE: Extracted data:', {
+            session_id,
+            pf_accuracy,
+            sr_paas_score
+        });
+
         // Verify session exists and belongs to user
+        console.log('MEASUREMENT CREATE: Checking session:', session_id);
         const session = await sessionModel.getSessionById(session_id);
         if (!session) {
+            console.log('MEASUREMENT CREATE: Session not found');
             return res.status(404).json({
                 success: false,
                 message: 'Session not found',
@@ -54,11 +68,14 @@ export async function createMeasurement(req, res) {
         }
 
         if (session.user_id !== req.user.user_id) {
+            console.log('MEASUREMENT CREATE: Permission denied');
             return res.status(403).json({
                 success: false,
                 message: 'You do not have permission to create measurements for this session',
             });
         }
+
+        console.log('MEASUREMENT CREATE: Session verified, proceeding with calculation');
 
         // Validate measurement data
         const validation = validateMeasurementData({
@@ -100,8 +117,8 @@ export async function createMeasurement(req, res) {
         const measurement = await measureModel.createMeasurement({
             session_id,
             user_id: req.user.user_id,
-            topic_id,
-            quiz_id,
+            topic_id: session.topic_id, // Use topic_id from session
+            quiz_id: session.quiz_id, // Use quiz_id from session
             // Raw data
             sr_paas_score,
             sr_nasa_tlx_mental_demand,
@@ -127,13 +144,13 @@ export async function createMeasurement(req, res) {
                 topic_id: measurement.topic_id,
                 quiz_id: measurement.quiz_id,
                 measured_at: measurement.measured_at,
-                cl_index: measurement.cl_index,
+                cl_index: parseFloat(measurement.cl_index),
                 cl_category: measurement.cl_category,
                 components: {
-                    sr_normalized: measurement.sr_normalized,
-                    pf_normalized: measurement.pf_normalized,
-                    bh_normalized: measurement.bh_normalized,
-                    ph_normalized: measurement.ph_normalized,
+                    sr_normalized: parseFloat(measurement.sr_normalized),
+                    pf_normalized: parseFloat(measurement.pf_normalized),
+                    bh_normalized: parseFloat(measurement.bh_normalized),
+                    ph_normalized: measurement.ph_normalized ? parseFloat(measurement.ph_normalized) : null,
                 },
             },
         });
