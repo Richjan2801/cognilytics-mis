@@ -10,6 +10,7 @@ import {
   LogOut,
   User,
   Bell,
+  Camera,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -88,6 +89,11 @@ const Sidebar = () => {
           href: '/data-entry',
           icon: FileEdit,
         },
+        {
+          name: 'Facial Expression',
+          href: '/facial-expression',
+          icon: Camera,
+        },
       ];
     }
 
@@ -108,6 +114,11 @@ const Sidebar = () => {
           name: 'My Progress',
           href: '/my-progress',
           icon: Flame,
+        },
+        {
+          name: 'Facial Expression',
+          href: '/facial-expression',
+          icon: Camera,
         },
       ];
     }

@@ -15,6 +15,7 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import { FacialExpressionPage } from './pages/FacialExpressionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
@@ -101,6 +102,10 @@ const router = createBrowserRouter([
       {
         path: 'notifications',
         element: <NotificationsPage />,
+      },
+      {
+        path: 'facial-expression',
+        element: <FacialExpressionPage />,
       },
     ],
   },
