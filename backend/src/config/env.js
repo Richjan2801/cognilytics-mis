@@ -78,8 +78,14 @@ const config = {
         TEACHER_HIGH_ACCURACY_THRESHOLD: parseFloat(process.env.TEACHER_HIGH_ACCURACY_THRESHOLD || '0.85'),
     },
 
-    // Mock Data Mode (for development without database)
-    USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true' || false,
+    // Google OAuth Configuration
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback',
+
+    // Facial Expression Detection Service
+    FED_SERVICE_HOST: process.env.FED_SERVICE_HOST || 'http://localhost:5000',
+    FED_SERVICE_TIMEOUT: parseInt(process.env.FED_SERVICE_TIMEOUT || '30000', 10),
 
     // Logging
     LOG_LEVEL: process.env.LOG_LEVEL || 'info',

@@ -1,10 +1,9 @@
-// Authentication controller - handles login, registration, token refresh
+// Authentication controller - handles login, registration, token refresh, and OAuth
 import { validationResult } from 'express-validator';
 import * as userModel from '../models/users.model.js';
 import { generateTokens, verifyRefreshToken } from '../auth/jwt.js';
 import { handleDatabaseError } from '../config/db.js';
 import config from '../config/env.js';
-import { findUserByEmail, mockUsers } from '../data/mockData.js';
 
 /**
  * Register a new user
@@ -92,36 +91,15 @@ export async function login(req, res) {
         }
 
         const { email, password } = req.body;
-        console.log('[AUTH] Processing login for:', email, 'Mock mode:', config.USE_MOCK_DATA);
 
-        let user;
+        // Verify credentials against database
+        const user = await userModel.verifyUserPassword(email, password);
 
-        // MOCK MODE
-        if (config.USE_MOCK_DATA) {
-            console.log('[MOCK MODE] Login attempt for:', email);
-            user = findUserByEmail(email);
-
-            if (!user) {
-                console.log('[MOCK MODE] User not found');
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid email or password',
-                });
-            }
-
-            // In mock mode, accept any password for demo
-            console.log('[MOCK MODE] Login successful for:', email);
-        } else {
-            // REAL DATABASE MODE
-            // Verify credentials
-            user = await userModel.verifyUserPassword(email, password);
-
-            if (!user) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid email or password',
-                });
-            }
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password',
+            });
         }
 
         if (!user.is_active) {
@@ -377,4 +355,110 @@ export async function logout(req, res) {
         success: true,
         message: 'Logout successful. Please clear your tokens.',
     });
+}
+/**
+ * Google OAuth Callback Handler
+ * GET /api/auth/google/callback
+ * Called by Passport after Google authentication
+ */
+export async function googleCallback(req, res) {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Google authentication failed',
+            });
+        }
+
+        const user = req.user;
+        const tokens = generateTokens(user);
+
+        // Remove sensitive fields
+        const { password_hash, ...userWithoutPassword } = user;
+
+        res.status(200).json({
+            success: true,
+            message: 'Google authentication successful',
+            data: {
+                user: userWithoutPassword,
+                ...tokens,
+            },
+        });
+    } catch (error) {
+        console.error('Google callback error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Google authentication failed',
+            error: error.message,
+        });
+    }
+}
+
+/**
+ * Verify Google Token (for direct token verification)
+ * POST /api/auth/google/verify
+ */
+export async function verifyGoogleToken(req, res) {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID token is required',
+            });
+        }
+
+        // Verify token with Google
+        const { OAuth2Client } = await import('google-auth-library').catch(() => null);
+        
+        if (!OAuth2Client) {
+            return res.status(500).json({
+                success: false,
+                message: 'Google authentication library not installed',
+            });
+        }
+
+        const client = new OAuth2Client(config.GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+            idToken,
+            audience: config.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+
+        // Find or create user
+        let user = await userModel.findUserByEmail(payload.email);
+
+        if (!user) {
+            // Create new user from Google profile
+            user = await userModel.createUser({
+                email: payload.email,
+                first_name: payload.given_name || '',
+                last_name: payload.family_name || '',
+                password: null, // OAuth users don't have passwords
+                role: 'student',
+                is_active: true,
+            });
+        }
+
+        const tokens = generateTokens(user);
+        const { password_hash, ...userWithoutPassword } = user;
+
+        res.status(200).json({
+            success: true,
+            message: 'Google authentication successful',
+            data: {
+                user: userWithoutPassword,
+                ...tokens,
+            },
+        });
+    } catch (error) {
+        console.error('Google token verification error:', error);
+        res.status(401).json({
+            success: false,
+            message: 'Invalid Google token',
+            error: error.message,
+        });
+    }
 }

@@ -94,6 +94,10 @@ router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
 router.post('/refresh', authController.refreshToken);
 
+// Google OAuth routes
+router.post('/google/verify', authController.verifyGoogleToken);
+router.post('/google/callback', authController.googleCallback);
+
 // Protected routes (require authentication)
 router.get('/me', authenticate, authController.getCurrentUser);
 router.put('/profile', authenticate, profileUpdateValidation, authController.updateProfile);
