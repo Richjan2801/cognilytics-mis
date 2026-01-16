@@ -4,6 +4,8 @@ import cors from 'cors';
 import config from './config/env.js';
 import db, { testConnection } from './config/db.js';
 
+console.log('Server starting with USE_MOCK_DATA:', config.USE_MOCK_DATA);
+
 // Import routes
 import authRoutes from './routes/auth.routes.js';
 import measurementsRoutes from './routes/measurements.routes.js';

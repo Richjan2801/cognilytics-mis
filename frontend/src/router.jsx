@@ -19,6 +19,8 @@ import { FacialExpressionPage } from './pages/FacialExpressionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
+console.log('🛣️ Router configuration loaded');
+
 /**
  * Application Router Configuration
  * 

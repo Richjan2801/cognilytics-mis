@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
  * Service for facial expression detection API calls
@@ -17,7 +17,7 @@ export const facialExpressionService = {
             const response = await axios.post(
                 `${API_BASE_URL}/facial-expression/detect`,
                 {
-                    image: imageBase64
+                    image_base64: imageBase64
                 },
                 {
                     headers: {
@@ -27,12 +27,18 @@ export const facialExpressionService = {
                 }
             );
 
+            console.log('🔍 facialExpressionService - axios response:', response);
+            console.log('🔍 facialExpressionService - response.data:', response.data);
+            console.log('🔍 facialExpressionService - response.data.data:', response.data.data);
+
+            // Backend returns { success: true, data: { dominant_emotion, emotion_confidence, ... } }
+            // Axios wraps this in response.data, so the actual detection data is in response.data.data
             return {
                 success: true,
-                data: response.data
+                data: response.data.data || response.data
             };
         } catch (error) {
-            console.error('Emotion detection error:', error);
+            console.error('❌ Emotion detection error:', error);
             return {
                 success: false,
                 error: error.response?.data?.message || error.message

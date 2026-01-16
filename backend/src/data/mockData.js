@@ -10,7 +10,7 @@ import { calculateCLIndex } from '../services/cl-calculation.service.js';
 // ============================================
 // USERS - Mock user data dengan berbagai role
 // ============================================
-export const mockUsers = [
+export let mockUsers = [
   {
     user_id: 'usr_001',
     email: 'admin@cognilytics.com',

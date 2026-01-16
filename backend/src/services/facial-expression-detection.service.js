@@ -47,10 +47,13 @@ class FacialExpressionClient {
                 session_id: sessionId
             });
 
+            console.log('🎭 FED Service Response:', JSON.stringify(response.data, null, 2));
+
             if (!response.data.success) {
                 throw new Error(response.data.error || 'Detection failed');
             }
 
+            console.log('✅ Returning data:', JSON.stringify(response.data.data, null, 2));
             return response.data.data;
         } catch (error) {
             console.error('Expression detection error:', error.message);

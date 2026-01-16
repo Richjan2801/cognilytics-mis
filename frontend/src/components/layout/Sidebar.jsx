@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -25,8 +26,15 @@ import clsx from 'clsx';
  */
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
+  
+  console.log('👤 Sidebar render - user:', { email: user?.email, role: user?.role, isLoading });
+  
+  // Monitor user changes
+  useEffect(() => {
+    console.log('👤 Sidebar useEffect - user changed:', { email: user?.email, role: user?.role });
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -35,8 +43,11 @@ const Sidebar = () => {
 
   // Navigation items based on role
   const getNavigationItems = () => {
+    console.log('🧭 Getting navigation items for user:', user?.email, 'role:', user?.role);
+    
     // Admin-specific items
     if (user?.role === 'admin') {
+      console.log('📋 Showing admin menu');
       return [
         {
           name: 'Dashboard',
@@ -63,6 +74,7 @@ const Sidebar = () => {
 
     // Teacher-specific items
     if (user?.role === 'teacher') {
+      console.log('📋 Showing teacher menu');
       return [
         {
           name: 'Dashboard',
@@ -89,16 +101,12 @@ const Sidebar = () => {
           href: '/data-entry',
           icon: FileEdit,
         },
-        {
-          name: 'Facial Expression',
-          href: '/facial-expression',
-          icon: Camera,
-        },
       ];
     }
 
     // Student-specific items
     if (user?.role === 'student') {
+      console.log('📋 Showing student menu');
       return [
         {
           name: 'Dashboard',

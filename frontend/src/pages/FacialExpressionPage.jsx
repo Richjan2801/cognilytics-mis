@@ -1,8 +1,8 @@
-import { useState, useEffect, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { CameraComponent } from '../components/CameraComponent';
 import { facialExpressionService } from '../services/facialExpressionService';
-import { DashboardLayout } from '../components/layout/DashboardLayout';
+import authService from '../services/authService';
 
 /**
  * Emotion color mapping
@@ -31,8 +31,15 @@ const EMOTION_TEXT_COLORS = {
  * Facial Expression Detection Page
  */
 export function FacialExpressionPage() {
-    const { token, user } = useContext(AuthContext);
-    
+    console.log('🎭 FacialExpressionPage function called');
+
+    const { user } = useAuth();
+    console.log('👤 User from auth:', user);
+
+    // Get token from localStorage
+    const token = localStorage.getItem('access_token');
+    console.log('🔑 Token exists:', !!token);
+
     const [detectionActive, setDetectionActive] = useState(false);
     const [detectionResults, setDetectionResults] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -49,14 +56,19 @@ export function FacialExpressionPage() {
 
     // Load analysis history on mount
     useEffect(() => {
-        loadHistory();
+        if (authService.isAuthenticated()) {
+            loadHistory();
+        }
     }, []);
 
     /**
      * Load analysis history
      */
     const loadHistory = async () => {
-        if (!token) return;
+        if (!authService.isAuthenticated()) {
+            setError('Authentication expired. Please login again.');
+            return;
+        }
 
         const result = await facialExpressionService.getAnalysisHistory(token);
         if (result.success) {
@@ -68,52 +80,73 @@ export function FacialExpressionPage() {
      * Handle frame capture from camera
      */
     const handleFrameCapture = async (frameBase64) => {
-        if (!detectionActive || isProcessing || !token) return;
+        console.log('🎥 Frame captured, detection active:', detectionActive, 'processing:', isProcessing, 'token exists:', !!token);
+
+        if (!detectionActive || isProcessing || !token || !authService.isAuthenticated()) {
+            console.log('⏭️ Skipping frame processing - conditions not met');
+            if (!authService.isAuthenticated()) {
+                setError('Authentication expired. Please login again.');
+                // Optionally redirect to login
+                // navigate('/login');
+            }
+            return;
+        }
 
         setIsProcessing(true);
         setError(null);
+
+        console.log('📤 Sending frame to backend for emotion detection...');
 
         try {
             // Send frame to backend for emotion detection
             const result = await facialExpressionService.detectEmotion(frameBase64, token);
 
+            console.log('📥 Backend response:', result);
+
             if (result.success) {
                 const detection = result.data;
+                console.log('✅ Detection successful:', detection);
+                
+                // Ensure all fields have proper values
+                const cleanedDetection = {
+                    dominant_emotion: detection.dominant_emotion || 'neutral',
+                    emotion_confidence: parseFloat(detection.emotion_confidence || 0),
+                    cognitive_load: parseFloat(detection.cognitive_load || 0),
+                    emotion_scores: detection.emotion_scores || {},
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('🎯 Cleaned detection:', cleanedDetection);
 
                 // Update current results
-                setDetectionResults({
-                    ...detection,
-                    timestamp: new Date().toISOString()
-                });
+                setDetectionResults(cleanedDetection);
 
                 // Update statistics
                 setStats(prev => {
                     const newTotal = prev.totalFrames + 1;
-                    const newAvg = (prev.averageCognitiveLevelLoad * prev.totalFrames + 
-                                  (detection.cognitive_load || 0)) / newTotal;
+                    const cogLoad = parseFloat(cleanedDetection.cognitive_load || 0);
+                    const newAvg = (prev.averageCognitiveLevelLoad * prev.totalFrames + cogLoad) / newTotal;
 
                     return {
                         ...prev,
                         totalFrames: newTotal,
                         averageCognitiveLevelLoad: parseFloat(newAvg.toFixed(2)),
-                        dominantEmotion: detection.dominant_emotion || prev.dominantEmotion,
+                        dominantEmotion: cleanedDetection.dominant_emotion || prev.dominantEmotion,
                         sessionStartTime: prev.sessionStartTime || new Date()
                     };
                 });
 
                 // Add to history
                 setAnalysisHistory(prev => [
-                    {
-                        ...detection,
-                        timestamp: new Date().toISOString()
-                    },
+                    cleanedDetection,
                     ...prev
                 ].slice(0, 100)); // Keep last 100 entries
             } else {
+                console.error('❌ Detection failed:', result.error);
                 setError(result.error || 'Detection failed');
             }
         } catch (err) {
-            console.error('Frame processing error:', err);
+            console.error('💥 Frame processing error:', err);
             setError('Error processing frame');
         } finally {
             setIsProcessing(false);
@@ -146,7 +179,7 @@ export function FacialExpressionPage() {
      */
     const renderEmotionBadge = (emotion, confidence) => {
         if (!emotion) return null;
-        
+
         return (
             <div className="flex items-center gap-2">
                 <div className={`w-4 h-4 rounded-full ${EMOTION_COLORS[emotion] || 'bg-gray-500'}`}></div>
@@ -187,8 +220,7 @@ export function FacialExpressionPage() {
     };
 
     return (
-        <DashboardLayout>
-            <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 py-8">
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
                         Facial Expression Detection
@@ -196,6 +228,17 @@ export function FacialExpressionPage() {
                     <p className="text-gray-600">
                         Real-time emotion and cognitive load analysis using your device camera
                     </p>
+                    {/* Debug Info */}
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 className="text-sm font-semibold text-blue-900 mb-2">Debug Information</h3>
+                        <div className="text-xs text-blue-800 space-y-1">
+                            <p><strong>Detection Active:</strong> {detectionActive ? 'Yes' : 'No'}</p>
+                            <p><strong>Processing:</strong> {isProcessing ? 'Yes' : 'No'}</p>
+                            <p><strong>Results:</strong> {detectionResults ? 'Available' : 'None'}</p>
+                            <p><strong>History:</strong> {analysisHistory.length} entries</p>
+                            <p><strong>Token:</strong> {token ? 'Present' : 'Missing'}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Error Alert */}
@@ -233,7 +276,7 @@ export function FacialExpressionPage() {
                         {/* Control Panel */}
                         <div className="bg-white rounded-lg shadow-md p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Controls</h3>
-                            
+
                             <div className="space-y-4">
                                 <button
                                     onClick={handleToggleDetection}
@@ -276,7 +319,7 @@ export function FacialExpressionPage() {
                         {detectionResults && (
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Detection</h3>
-                                
+
                                 <div className="space-y-3">
                                     <div>
                                         <p className="text-sm text-gray-600 mb-1">Primary Emotion</p>
@@ -324,7 +367,7 @@ export function FacialExpressionPage() {
                         {/* Session Statistics */}
                         <div className="bg-white rounded-lg shadow-md p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Session Stats</h3>
-                            
+
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Frames Analyzed:</span>
@@ -368,7 +411,7 @@ export function FacialExpressionPage() {
                 {analysisHistory.length > 0 && (
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis History</h2>
-                        
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
@@ -411,6 +454,5 @@ export function FacialExpressionPage() {
                     </div>
                 )}
             </div>
-        </DashboardLayout>
     );
 }

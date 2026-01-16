@@ -115,10 +115,9 @@ export function normalizeBH(bhData) {
 
 /**
  * Normalize Physiological (PH) component
- * This is a placeholder for future implementation with camera/sensors
- * For now, returns a default value or processes simple data
+ * Now includes facial expression analysis as primary physiological indicator
  *
- * @param {Object} phData - Physiological data
+ * @param {Object} phData - Physiological data including facial expressions
  * @returns {number|null} Normalized PH value (0-1) or null
  */
 export function normalizePH(phData) {
@@ -127,14 +126,17 @@ export function normalizePH(phData) {
         return null;
     }
 
-    // Placeholder: If there's eye tracking, facial analysis, or heart rate data
-    // For now, return a conservative neutral value
-    // This will be implemented when camera integration is added
-    const { eye_tracking_data, facial_analysis, heart_rate_data } = phData;
+    const { facial_cl_index, eye_tracking_data, heart_rate_data } = phData;
 
-    if (eye_tracking_data || facial_analysis || heart_rate_data) {
-        // Future: Implement actual normalization based on physiological signals
-        // For now, return null to exclude from calculation
+    // Primary: Use facial expression CL index if available
+    if (facial_cl_index !== null && facial_cl_index !== undefined) {
+        // Facial CL index is already normalized 0-1
+        return clamp(facial_cl_index, 0, 1);
+    }
+
+    // Fallback: Other physiological indicators (future implementation)
+    if (eye_tracking_data || heart_rate_data) {
+        // Future: Implement normalization for other physiological signals
         return null;
     }
 

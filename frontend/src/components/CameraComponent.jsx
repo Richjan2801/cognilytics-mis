@@ -20,16 +20,36 @@ export function CameraComponent({ onFrameCapture = null, autoCapture = false, ca
         stopFrameCapture
     } = useCamera();
 
+    console.log('📹 CameraComponent rendered with props:', { onFrameCapture: !!onFrameCapture, autoCapture, captureInterval });
+    console.log('📹 CameraComponent state:', { isActive, isCameraReady, error: !!error });
+
     const [showCanvas, setShowCanvas] = useState(false);
+
+    // Auto-start camera when autoCapture is enabled
+    useEffect(() => {
+        console.log('🔄 CameraComponent useEffect triggered:', { autoCapture, isActive, error: !!error });
+        
+        if (autoCapture && !isActive && !error) {
+            console.log('📷 Auto-starting camera because autoCapture is enabled');
+            startCamera();
+        } else if (!autoCapture && isActive) {
+            console.log('📷 Auto-stopping camera because autoCapture is disabled and camera is active');
+            stopCamera();
+        } else {
+            console.log('⏭️ No action needed:', { autoCapture, isActive, hasError: !!error });
+        }
+    }, [autoCapture, isActive, error, startCamera, stopCamera]);
 
     // Handle auto-capture when component mounts and camera is ready
     useEffect(() => {
         if (autoCapture && isCameraReady && onFrameCapture) {
+            console.log('📸 Starting auto-capture with interval:', captureInterval, 'ms');
             startFrameCapture(onFrameCapture, captureInterval);
         }
 
         return () => {
             if (autoCapture) {
+                console.log('🛑 Stopping auto-capture');
                 stopFrameCapture();
             }
         };
@@ -42,6 +62,20 @@ export function CameraComponent({ onFrameCapture = null, autoCapture = false, ca
         }
     };
 
+    // Test camera access function
+    const testCameraAccess = async () => {
+        console.log('🧪 Testing camera access...');
+        try {
+            const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            console.log('✅ Camera test successful');
+            testStream.getTracks().forEach(track => track.stop());
+            alert('Camera access test successful! Camera is working.');
+        } catch (error) {
+            console.error('❌ Camera test failed:', error);
+            alert(`Camera access test failed: ${error.message}`);
+        }
+    };
+
     return (
         <div className="w-full max-w-lg mx-auto">
             {/* Camera Error Display */}
@@ -49,6 +83,15 @@ export function CameraComponent({ onFrameCapture = null, autoCapture = false, ca
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-700 text-sm font-medium">Camera Error</p>
                     <p className="text-red-600 text-xs mt-1">{error}</p>
+                    <div className="mt-3 text-xs text-gray-600">
+                        <p className="font-medium mb-1">Troubleshooting steps:</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                            <li>Refresh the page and click "Allow" when prompted for camera access</li>
+                            <li>Check that your camera is not being used by another application</li>
+                            <li>Try using a different browser (Chrome, Firefox, or Edge recommended)</li>
+                            <li>Ensure your camera is properly connected and functioning</li>
+                        </ol>
+                    </div>
                 </div>
             )}
 
@@ -117,6 +160,13 @@ export function CameraComponent({ onFrameCapture = null, autoCapture = false, ca
                     }`}
                 >
                     {isActive ? 'Stop Camera' : 'Start Camera'}
+                </button>
+
+                <button
+                    onClick={testCameraAccess}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                    Test Camera Access
                 </button>
 
                 {!autoCapture && (

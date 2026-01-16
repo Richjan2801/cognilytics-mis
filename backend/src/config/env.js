@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env file (skip in test environment)
 if (process.env.NODE_ENV !== 'test') {
     dotenv.config({ path: path.join(__dirname, '../../.env') });
+    console.log('Loaded USE_MOCK_DATA from .env:', process.env.USE_MOCK_DATA);
 }
 
 const config = {
@@ -16,6 +17,9 @@ const config = {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: parseInt(process.env.PORT || '3000', 10),
     HOST: process.env.HOST || 'localhost',
+
+    // Mock Data Configuration
+    USE_MOCK_DATA: process.env.USE_MOCK_DATA === 'true',
 
     // Database Configuration - Use test defaults when in test environment
     DB_HOST: process.env.DB_HOST || (process.env.NODE_ENV === 'test' ? 'localhost' : 'postgres'),
@@ -46,10 +50,10 @@ const config = {
 
     // CL Calculation Configuration
     CL_WEIGHTS: {
-        SR: parseFloat(process.env.CL_WEIGHT_SR || '0.35'),
-        PF: parseFloat(process.env.CL_WEIGHT_PF || '0.30'),
+        SR: parseFloat(process.env.CL_WEIGHT_SR || '0.30'),
+        PF: parseFloat(process.env.CL_WEIGHT_PF || '0.25'),
         BH: parseFloat(process.env.CL_WEIGHT_BH || '0.20'),
-        PH: parseFloat(process.env.CL_WEIGHT_PH || '0.15'),
+        PH: parseFloat(process.env.CL_WEIGHT_PH || '0.25'), // Increased for Facial component
     },
 
     // CL Thresholds
@@ -77,6 +81,11 @@ const config = {
         TEACHER_LOW_CHALLENGE_THRESHOLD: parseFloat(process.env.TEACHER_LOW_CHALLENGE_THRESHOLD || '0.30'),
         TEACHER_HIGH_ACCURACY_THRESHOLD: parseFloat(process.env.TEACHER_HIGH_ACCURACY_THRESHOLD || '0.85'),
     },
+
+    // Facial Expression Detection Service Configuration
+    FED_SERVICE_HOST: process.env.FED_SERVICE_HOST || 'http://facial-expression:5000',
+    FED_SERVICE_TIMEOUT: parseInt(process.env.FED_SERVICE_TIMEOUT || '30000', 10), // 30 seconds
+    FED_ENABLED: process.env.FED_ENABLED === 'true' || false, // Disabled by default
 
     // Google OAuth Configuration
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',

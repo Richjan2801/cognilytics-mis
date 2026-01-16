@@ -66,9 +66,23 @@ router.post('/detect', [
 
         // Call facial expression detection service
         const result = await fedClient.detectExpression(image_base64, userId, session_id);
+        
+        console.log('🔍 Raw result from FED service:', JSON.stringify(result, null, 2));
+        
+        // The service already returns the detection object directly
+        // Structure: { face_detected, dominant_emotion, emotion_confidence, emotion_scores, cognitive_load_estimate }
+        const mappedResult = {
+            dominant_emotion: result.dominant_emotion || 'neutral',
+            emotion_confidence: result.emotion_confidence || 0,
+            cognitive_load: result.cognitive_load_estimate || 0,
+            emotion_scores: result.emotion_scores || {},
+            face_detected: result.face_detected || false
+        };
+        
+        console.log('📤 Sending to frontend:', JSON.stringify(mappedResult, null, 2));
 
         // Store detection result in database
-        if (session_id && result.detection_result?.cognitive_load_estimate !== undefined) {
+        if (session_id && result.cognitive_load_estimate !== undefined) {
             try {
                 await db.none(
                     `INSERT INTO facial_expression_data 
@@ -77,8 +91,8 @@ router.post('/detect', [
                     [
                         session_id,
                         userId,
-                        JSON.stringify(result.detection_result),
-                        result.detection_result.cognitive_load_estimate
+                        JSON.stringify(result),
+                        result.cognitive_load_estimate
                     ]
                 );
             } catch (dbError) {
@@ -89,7 +103,7 @@ router.post('/detect', [
 
         res.status(200).json({
             success: true,
-            data: result
+            data: mappedResult
         });
     } catch (error) {
         console.error('Detection error:', error);
@@ -334,6 +348,51 @@ router.get('/calibration-status', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to retrieve calibration status',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Get facial expression analysis history for current user
+ * GET /api/facial-expression/history
+ */
+router.get('/history', async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+
+        // Get recent facial expression data for user (last 50 entries)
+        const expressionData = await db.any(
+            `SELECT * FROM facial_expression_data
+             WHERE user_id = $1
+             ORDER BY detected_at DESC
+             LIMIT 50`,
+            [userId]
+        );
+
+        // Get recent batch data for user (last 10 entries)
+        const batchData = await db.any(
+            `SELECT * FROM facial_expression_batch_data
+             WHERE user_id = $1
+             ORDER BY recorded_at DESC
+             LIMIT 10`,
+            [userId]
+        );
+
+        res.status(200).json({
+            success: true,
+            data: {
+                history: expressionData,
+                batch_history: batchData,
+                total_individual: expressionData.length,
+                total_batch: batchData.length
+            }
+        });
+    } catch (error) {
+        console.error('Get history error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve facial expression history',
             error: error.message
         });
     }

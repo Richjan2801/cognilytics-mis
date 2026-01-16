@@ -22,27 +22,84 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  console.log('🔐 AuthProvider initialized');
+
   // Initialize - check if user already logged in
   useEffect(() => {
     const initAuth = async () => {
+      console.log('🔍 Checking authentication...');
       try {
-        if (authService.isAuthenticated()) {
-          // Try to get fresh user data from API
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          // Check localStorage as fallback
+        // First check if token is still valid
+        const tokenValid = authService.isAuthenticated();
+        console.log('🔑 Token valid:', tokenValid);
+        
+        if (tokenValid) {
+          console.log('✅ Token exists and valid');
+          
+          // Load user from localStorage immediately (for instant UI)
           const storedUser = authService.getStoredUser();
+          console.log('📦 Stored user:', storedUser?.email, storedUser?.role);
+          
           if (storedUser) {
             setUser(storedUser);
             setIsAuthenticated(true);
+            console.log('✅ User loaded from localStorage:', storedUser);
+          } else {
+            console.log('⚠️ Token valid but no stored user, attempting API refresh...');
+            // Token valid but no stored user - try to get from API
+            try {
+              const userData = await authService.getCurrentUser();
+              console.log('🔄 Retrieved user from API:', userData?.email);
+              if (userData) {
+                setUser(userData);
+                setIsAuthenticated(true);
+              }
+            } catch (apiError) {
+              console.error('❌ Failed to get user from API:', apiError.message);
+              // Clear invalid token
+              authService.logout();
+              setUser(null);
+              setIsAuthenticated(false);
+            }
           }
+          
+          // Try to refresh user data from API in background (optional, don't fail if it does)
+          if (storedUser) {
+            try {
+              console.log('🔄 Background refresh of user data from API...');
+              const userData = await authService.getCurrentUser();
+              console.log('🔄 API user data updated:', userData?.email);
+              if (userData) {
+                setUser(userData);
+              }
+            } catch (apiError) {
+              console.warn('⚠️ Background API refresh failed, keeping stored user:', apiError.message);
+              // Keep using stored user if API fails
+            }
+          }
+        } else {
+          // Token expired or invalid - clear auth data
+          console.log('❌ Token expired or invalid, logging out...');
+          authService.logout();
+          setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error('Auth init error:', error);
-        // Clear invalid auth data
-        authService.logout();
+        console.error('💥 Auth init error:', error);
+        // On error, try to keep user logged in if we have a valid token and stored user
+        const tokenValid = authService.isAuthenticated();
+        const storedUser = authService.getStoredUser();
+        
+        if (tokenValid && storedUser) {
+          console.log('🛡️ Keeping user session despite error');
+          setUser(storedUser);
+          setIsAuthenticated(true);
+        } else {
+          console.log('🚪 Logging out due to error');
+          authService.logout();
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -59,13 +116,26 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials);
-      const userData = response.data.user;
+      console.log('🔐 AuthContext.login - response from authService:', response);
+      
+      // authService returns the full API response: { success, message, data: { user, accessToken, refreshToken } }
+      // So user is at response.data.user
+      const userData = response?.data?.user;
+      console.log('🔐 AuthContext.login - extracted userData:', userData);
+      
+      if (!userData) {
+        console.error('❌ No user data found');
+        console.error('   response:', response);
+        throw new Error('Login failed: no user data in response');
+      }
       
       setUser(userData);
       setIsAuthenticated(true);
+      console.log('✅ User set in state:', userData?.email, userData?.role);
       
       return userData;
     } catch (error) {
+      console.error('❌ AuthContext.login error:', error.message);
       throw error;
     }
   };
@@ -78,30 +148,37 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authService.register(userData);
-      const newUser = response.data.user;
+      console.log('🔐 Register response:', response);
+      
+      // authService returns the full API response: { success, message, data: { user, accessToken, refreshToken } }
+      // So user is at response.data.user
+      const newUser = response?.data?.user;
+      console.log('🔐 Register - extracted newUser:', newUser);
+      
+      if (!newUser) {
+        console.error('❌ No user data found');
+        throw new Error('Register failed: no user data in response');
+      }
       
       setUser(newUser);
       setIsAuthenticated(true);
+      console.log('✅ User set in state:', newUser?.email, newUser?.role);
       
       return newUser;
     } catch (error) {
+      console.error('❌ Register error:', error.message);
       throw error;
     }
   };
 
   /**
    * Logout user
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  const logout = async () => {
-    try {
-      await authService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+    setIsAuthenticated(false);
   };
 
   /**
@@ -113,6 +190,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const updatedUser = await authService.updateProfile(userData);
       setUser(updatedUser);
+      // Ensure localStorage is updated
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       return updatedUser;
     } catch (error) {
       throw error;
@@ -127,6 +206,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const userData = await authService.getCurrentUser();
       setUser(userData);
+      // Ensure localStorage is updated
+      localStorage.setItem('user', JSON.stringify(userData));
       return userData;
     } catch (error) {
       throw error;

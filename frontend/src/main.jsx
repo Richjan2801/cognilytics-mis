@@ -6,6 +6,20 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import './index.css'
 import router from './router'
 
+console.log('🚀 React app starting...');
+
+// Global error handler
+window.addEventListener('error', (event) => {
+  console.error('💥 Global error:', event.error);
+  console.error('Error message:', event.message);
+  console.error('Error file:', event.filename);
+  console.error('Error line:', event.lineno);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('💥 Unhandled promise rejection:', event.reason);
+});
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>

@@ -1,6 +1,7 @@
 // Role-based access control middleware
 import { verifyAccessToken, extractTokenFromHeader } from './jwt.js';
 import db from '../config/db.js';
+import { mockUsers } from '../data/mockData.js';
 
 /**
  * Authentication middleware - verifies JWT token and attaches user to request
@@ -23,11 +24,31 @@ export async function authenticate(req, res, next) {
         // Verify token
         const decoded = verifyAccessToken(token);
 
-        // Check if user still exists and is active
-        const user = await db.oneOrNone(
-            'SELECT user_id, email, role, first_name, last_name, is_active FROM users WHERE user_id = $1',
-            [decoded.user_id]
-        );
+        let user = null;
+
+        // Check mock users first (hybrid mode)
+        const mockUser = mockUsers.find(u => u.user_id === decoded.user_id);
+        if (mockUser) {
+            user = {
+                user_id: mockUser.user_id,
+                email: mockUser.email,
+                role: mockUser.role,
+                first_name: mockUser.first_name,
+                last_name: mockUser.last_name,
+                is_active: mockUser.is_active
+            };
+        } else {
+            // If not a mock user, check database
+            try {
+                user = await db.oneOrNone(
+                    'SELECT user_id, email, role, first_name, last_name, is_active FROM users WHERE user_id = $1',
+                    [decoded.user_id]
+                );
+            } catch (dbError) {
+                console.log('[AUTH] Database query failed:', dbError.message);
+                user = null;
+            }
+        }
 
         if (!user) {
             return res.status(401).json({
@@ -43,11 +64,17 @@ export async function authenticate(req, res, next) {
             });
         }
 
-        // Update last login
-        await db.none(
-            'UPDATE users SET last_login = NOW() WHERE user_id = $1',
-            [user.user_id]
-        );
+        // Update last login only for database users (not mock users)
+        if (user.user_id && user.user_id.startsWith('usr_') === false) {
+            try {
+                await db.none(
+                    'UPDATE users SET last_login = NOW() WHERE user_id = $1',
+                    [user.user_id]
+                );
+            } catch (dbError) {
+                console.warn('Failed to update last login:', dbError.message);
+            }
+        }
 
         // Attach user to request
         req.user = user;

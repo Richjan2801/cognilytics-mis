@@ -21,15 +21,30 @@ const authService = {
   async login(credentials) {
     try {
       const response = await api.post('/auth/login', credentials);
-      const { user, access_token, refresh_token } = response.data.data;
+      console.log('🔐 authService.login - raw axios response:', response);
+      console.log('🔐 authService.login - response.data:', response.data);
+      
+      // Axios wraps the API response in response.data, so:
+      // response.data = { success: true, message: "...", data: { user, accessToken, refreshToken } }
+      const { user, accessToken, refreshToken } = response.data.data;
+      console.log('🔐 authService.login - extracted:', { user: user?.email, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
+
+      if (!user) {
+        console.error('❌ No user in response.data.data');
+        throw new Error('Login failed: no user data in response');
+      }
 
       // Store tokens dan user data
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
+      localStorage.setItem('access_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Stored to localStorage: user, access_token, refresh_token');
 
+      // Return the full API response structure so AuthContext can extract it
+      console.log('🔐 authService.login - returning:', response.data);
       return response.data;
     } catch (error) {
+      console.error('❌ authService.login catch error:', error.message);
       throw error.response?.data || error;
     }
   },
@@ -42,11 +57,11 @@ const authService = {
   async register(userData) {
     try {
       const response = await api.post('/auth/register', userData);
-      const { user, access_token, refresh_token } = response.data.data;
+      const { user, accessToken, refreshToken } = response.data.data;
 
       // Store tokens dan user data
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
+      localStorage.setItem('access_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
       return response.data;
@@ -57,19 +72,13 @@ const authService = {
 
   /**
    * Logout user
-   * @returns {Promise}
+   * @returns {void}
    */
-  async logout() {
-    try {
-      await api.post('/auth/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear storage regardless of API success
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-    }
+  logout() {
+    // Clear all auth data from localStorage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
   },
 
   /**
@@ -79,13 +88,22 @@ const authService = {
   async getCurrentUser() {
     try {
       const response = await api.get('/auth/me');
-      const user = response.data.data;
+      // Backend returns { success: true, data: { user: {...} } }
+      const user = response.data?.data?.user;
+      console.log('🔍 authService.getCurrentUser - received:', { email: user?.email, role: user?.role });
+
+      if (!user) {
+        console.error('❌ No user data in getCurrentUser response');
+        throw new Error('Invalid getCurrentUser response');
+      }
 
       // Update stored user data
       localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ User updated in localStorage:', user?.email);
 
       return user;
     } catch (error) {
+      console.error('❌ getCurrentUser error:', error.message);
       throw error.response?.data || error;
     }
   },
@@ -98,13 +116,22 @@ const authService = {
   async updateProfile(userData) {
     try {
       const response = await api.put('/auth/profile', userData);
-      const user = response.data.data;
+      // Backend returns { success: true, data: { user: {...} } }
+      const user = response.data?.data?.user;
+      console.log('🔍 authService.updateProfile - received:', { email: user?.email, role: user?.role });
+
+      if (!user) {
+        console.error('❌ No user data in updateProfile response');
+        throw new Error('Invalid updateProfile response');
+      }
 
       // Update stored user data
       localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ User updated in localStorage:', user?.email);
 
       return user;
     } catch (error) {
+      console.error('❌ updateProfile error:', error.message);
       throw error.response?.data || error;
     }
   },
@@ -128,7 +155,18 @@ const authService = {
    * @returns {boolean}
    */
   isAuthenticated() {
-    return !!localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
+    if (!token) return false;
+
+    try {
+      // Decode token to check expiry
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp > currentTime;
+    } catch (error) {
+      // Invalid token format
+      return false;
+    }
   },
 
   /**
@@ -136,8 +174,24 @@ const authService = {
    * @returns {Object|null}
    */
   getStoredUser() {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+      const userStr = localStorage.getItem('user');
+      console.log('🔍 authService.getStoredUser() - localStorage user:', userStr ? '✅ exists' : '❌ null');
+      
+      if (!userStr) {
+        console.log('❌ No user in localStorage');
+        return null;
+      }
+      
+      const parsed = JSON.parse(userStr);
+      console.log('✅ User parsed:', { email: parsed?.email, role: parsed?.role });
+      return parsed;
+    } catch (error) {
+      console.error('💥 Error parsing stored user:', error.message);
+      // If corrupted, clear it
+      localStorage.removeItem('user');
+      return null;
+    }
   },
 };
 

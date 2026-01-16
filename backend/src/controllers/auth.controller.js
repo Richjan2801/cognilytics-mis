@@ -1,9 +1,11 @@
 // Authentication controller - handles login, registration, token refresh, and OAuth
 import { validationResult } from 'express-validator';
+import bcrypt from 'bcryptjs';
 import * as userModel from '../models/users.model.js';
 import { generateTokens, verifyRefreshToken } from '../auth/jwt.js';
 import { handleDatabaseError } from '../config/db.js';
 import config from '../config/env.js';
+import { mockUsers } from '../data/mockData.js';
 
 /**
  * Register a new user
@@ -23,8 +25,12 @@ export async function register(req, res) {
 
         const { email, password, first_name, last_name, role, institution_id } = req.body;
 
-        // Check if email already exists
-        const emailInUse = await userModel.emailExists(email);
+        // HYBRID MODE: Check both mock data and database for email existence
+        let emailInUse;
+        let user;
+
+        // First check if email exists in mock data
+        emailInUse = mockUsers.some(u => u.email === email);
         if (emailInUse) {
             return res.status(409).json({
                 success: false,
@@ -32,8 +38,17 @@ export async function register(req, res) {
             });
         }
 
-        // Create user
-        const user = await userModel.createUser({
+        // Then check if email exists in database
+        emailInUse = await userModel.emailExists(email);
+        if (emailInUse) {
+            return res.status(409).json({
+                success: false,
+                message: 'Email already registered',
+            });
+        }
+
+        // Create user in database (hybrid mode always saves to database)
+        user = await userModel.createUser({
             email,
             password,
             first_name,
@@ -92,8 +107,35 @@ export async function login(req, res) {
 
         const { email, password } = req.body;
 
-        // Verify credentials against database
-        const user = await userModel.verifyUserPassword(email, password);
+        // HYBRID MODE: Check both mock data and database
+        let user;
+
+        // HYBRID MODE: Check both mock data and database
+
+        // First check mock users (for default accounts)
+        const mockUser = mockUsers.find(u => u.email === email);
+        if (mockUser) {
+            console.log('[HYBRID MODE] Found user in mock data:', email);
+            // For mock users, check password
+            const isValidPassword = password === 'password123';
+            if (isValidPassword) {
+                user = {
+                    user_id: mockUser.user_id,
+                    email: mockUser.email,
+                    first_name: mockUser.first_name,
+                    last_name: mockUser.last_name,
+                    role: mockUser.role,
+                    institution_id: mockUser.institution_id,
+                    is_active: mockUser.is_active,
+                    created_at: mockUser.created_at,
+                    last_login: mockUser.last_login,
+                };
+            }
+        } else {
+            // If not in mock data, check database
+            console.log('[HYBRID MODE] User not in mock data, checking database:', email);
+            user = await userModel.verifyUserPassword(email, password);
+        }
 
         if (!user) {
             return res.status(401).json({

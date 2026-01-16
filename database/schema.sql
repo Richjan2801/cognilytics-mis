@@ -531,6 +531,55 @@ WHERE clm.measured_at >= NOW() - INTERVAL '30 days'
 GROUP BY t.topic_id, t.name, t.subject;
 
 -- ============================================================================
+-- FACIAL EXPRESSION DETECTION TABLES
+-- ============================================================================
+
+-- Facial Expressions Table (Hypertable)
+CREATE TABLE facial_expressions (
+    facial_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    session_id UUID REFERENCES learning_sessions(session_id) ON DELETE SET NULL,
+    measurement_id UUID REFERENCES cl_measurements(measurement_id) ON DELETE SET NULL,
+
+    -- Facial Detection Data
+    detected_at TIMESTAMPTZ DEFAULT NOW(),
+    image_path VARCHAR(500), -- Path to stored image if saved
+
+    -- Expression Results
+    dominant_emotion VARCHAR(50), -- happy, sad, angry, etc.
+    emotion_confidence DECIMAL(5,4) CHECK (emotion_confidence BETWEEN 0 AND 1),
+    emotion_scores JSONB, -- All emotion scores from DeepFace
+
+    -- Facial Features
+    face_landmarks JSONB, -- MediaPipe facial landmarks
+    head_pose JSONB, -- Head orientation data
+    eye_gaze JSONB, -- Eye gaze direction
+
+    -- Cognitive Load Mapping
+    facial_cl_index DECIMAL(5,4) CHECK (facial_cl_index BETWEEN 0 AND 1),
+    stress_indicators JSONB, -- Stress detection results
+    engagement_level DECIMAL(5,4) CHECK (engagement_level BETWEEN 0 AND 1),
+
+    -- Processing Metadata
+    processing_time_ms INTEGER,
+    model_version VARCHAR(50),
+    confidence_score DECIMAL(5,4) CHECK (confidence_score BETWEEN 0 AND 1),
+
+    -- Additional Data
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Convert to TimescaleDB Hypertable
+SELECT create_hypertable('facial_expressions', 'detected_at', if_not_exists => TRUE);
+
+-- Indexes for performance
+CREATE INDEX idx_facial_expressions_user_session ON facial_expressions(user_id, session_id);
+CREATE INDEX idx_facial_expressions_detected_at ON facial_expressions(detected_at DESC);
+CREATE INDEX idx_facial_expressions_emotion ON facial_expressions(dominant_emotion);
+CREATE INDEX idx_facial_expressions_cl_index ON facial_expressions(facial_cl_index);
+
+-- ============================================================================
 -- SAMPLE DATA (For Development/Testing)
 -- ============================================================================
 

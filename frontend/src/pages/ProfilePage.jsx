@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 function ProfilePage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -26,35 +26,42 @@ function ProfilePage() {
   // Role-specific statistics
   const [stats, setStats] = useState([]);
 
+  console.log('📄 ProfilePage render - user:', { email: user?.email, role: user?.role, isLoading });
+
   useEffect(() => {
     // Initialize profile data from user context
+    console.log('📄 ProfilePage useEffect - user changed:', { email: user?.email, role: user?.role });
     if (user) {
+      const fullName = user.first_name && user.last_name 
+        ? `${user.first_name} ${user.last_name}` 
+        : user.name || '';
+        
       setProfileData({
-        name: user.name || '',
+        name: fullName,
         email: user.email || '',
         role: user.role || '',
-        joinedDate: user.joinedDate || 'January 2024',
+        joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString() : 'January 2024',
         bio: user.bio || '',
         phone: user.phone || '',
         department: user.department || ''
       });
 
       // Set role-specific statistics
-      if (user.role === 'Student') {
+      if (user.role === 'student' || user.role === 'Student') {
         setStats([
           { label: 'Total Sessions', value: '47', icon: BookOpen, color: 'bg-blue-100 text-blue-600' },
           { label: 'Average CL', value: '6.2', icon: TrendingUp, color: 'bg-green-100 text-green-600' },
           { label: 'Courses Enrolled', value: '5', icon: Target, color: 'bg-purple-100 text-purple-600' },
           { label: 'Achievements', value: '12', icon: Award, color: 'bg-yellow-100 text-yellow-600' }
         ]);
-      } else if (user.role === 'Teacher') {
+      } else if (user.role === 'teacher' || user.role === 'Teacher') {
         setStats([
           { label: 'Students', value: '65', icon: Users, color: 'bg-blue-100 text-blue-600' },
           { label: 'Active Classes', value: '4', icon: BookOpen, color: 'bg-green-100 text-green-600' },
           { label: 'Avg CL Score', value: '6.5', icon: BarChart3, color: 'bg-purple-100 text-purple-600' },
           { label: 'Total Sessions', value: '128', icon: Target, color: 'bg-yellow-100 text-yellow-600' }
         ]);
-      } else if (user.role === 'Admin') {
+      } else if (user.role === 'admin' || user.role === 'Admin') {
         setStats([
           { label: 'Total Users', value: '234', icon: Users, color: 'bg-blue-100 text-blue-600' },
           { label: 'Active Teachers', value: '18', icon: Shield, color: 'bg-green-100 text-green-600' },

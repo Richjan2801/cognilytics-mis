@@ -25,8 +25,16 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
+  console.log('🛡️ ProtectedRoute check:', { 
+    isAuthenticated, 
+    isLoading, 
+    user: user ? { email: user.email, role: user.role } : null,
+    path: location.pathname 
+  });
+
   // Show loading state
   if (isLoading) {
+    console.log('⏳ ProtectedRoute: Still loading...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -39,6 +47,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Not authenticated - redirect to login
   if (!isAuthenticated) {
+    console.log('❌ ProtectedRoute: Not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

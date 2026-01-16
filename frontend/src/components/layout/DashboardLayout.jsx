@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -23,6 +24,22 @@ import Header from './Header';
  */
 
 const DashboardLayout = () => {
+  const { isLoading, user } = useAuth();
+  
+  console.log('📐 DashboardLayout render:', { isLoading, userRole: user?.role });
+  
+  // Show loading while auth is being initialized
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Sidebar - Fixed width */}
